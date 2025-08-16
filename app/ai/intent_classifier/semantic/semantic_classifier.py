@@ -15,7 +15,7 @@ class SemanticClassifier(BaseClassifier):
     
     def __init__(self, confidence_threshold: float = 0.6, examples_file: str = None):
         super().__init__(confidence_threshold)
-        self.logger = get_logger("app.ai.intent_classifier.semantic")
+        self.logger = get_logger("app.ai.semantic_classifier")
         
         # Load examples from file
         if examples_file is None:
@@ -82,6 +82,7 @@ class SemanticClassifier(BaseClassifier):
             try:
                 text_embedding = self.model.encode([text])
                 example_embeddings = self.embeddings_cache.get(examples[0], [])
+                self.logger.info(f"[CAREFUL] {example_embeddings}")
                 
                 if len(example_embeddings) == 0:
                     return [0.0] * len(examples)
@@ -104,29 +105,67 @@ class SemanticClassifier(BaseClassifier):
     def _classify_internal(self, text: str) -> IntentResult:
         """Classify intent using semantic similarity"""
         text = text.strip()
-        best_intent = None
-        best_confidence = 0.0
-        best_example = ""
         
-        for intent_name, examples in self.examples.items():
-            if not examples:
-                continue
+        if self.use_embeddings:
+            # Encode the input text once
+            text_embedding = self.model.encode([text])[0]
             
-            # Get similarities with all examples for this intent
-            if self.use_embeddings and intent_name in self.embeddings_cache:
-                similarities = self._semantic_similarity(text, examples)
-            else:
-                similarities = [self._simple_similarity(text, example) for example in examples]
+            # Collect all embeddings and their metadata
+            all_embeddings = []
+            embedding_metadata = []  # (intent_name, example_text, example_index)
             
-            # Take the maximum similarity as the confidence for this intent
-            max_similarity = max(similarities) if similarities else 0.0
+            for intent_name, examples in self.examples.items():
+                if not examples or intent_name not in self.embeddings_cache:
+                    continue
+                
+                example_embeddings = self.embeddings_cache[intent_name]
+                all_embeddings.extend(example_embeddings)
+                
+                for i, example in enumerate(examples):
+                    embedding_metadata.append((intent_name, example, i))
             
-            if max_similarity > best_confidence:
-                best_confidence = max_similarity
-                best_intent = intent_name
-                # Find the example that gave the best match
-                best_idx = similarities.index(max_similarity)
-                best_example = examples[best_idx]
+            if not all_embeddings:
+                return IntentResult(
+                    intent=Intent.SQL_QUERY,
+                    confidence=0.1,
+                    metadata={"classifier": "semantic", "best_example": "", "similarity_method": "embeddings"}
+                )
+            
+            # Batch compute cosine similarities
+            all_embeddings = np.array(all_embeddings)
+            
+            # Compute dot products in batch
+            dot_products = np.dot(all_embeddings, text_embedding)
+            
+            # Compute norms in batch
+            text_norm = np.linalg.norm(text_embedding)
+            example_norms = np.linalg.norm(all_embeddings, axis=1)
+            
+            # Compute cosine similarities in batch
+            similarities = dot_products / (example_norms * text_norm)
+            similarities = np.maximum(similarities, 0.0)  # Ensure non-negative
+            
+            # Find best match
+            best_idx = np.argmax(similarities)
+            best_confidence = similarities[best_idx]
+            best_intent, best_example, _ = embedding_metadata[best_idx]
+            
+        else:
+            # Fallback to simple similarity
+            best_intent = None
+            best_confidence = 0.0
+            best_example = ""
+            
+            for intent_name, examples in self.examples.items():
+                if not examples:
+                    continue
+                
+                for example in examples:
+                    similarity = self._simple_similarity(text, example)
+                    if similarity > best_confidence:
+                        best_confidence = similarity
+                        best_intent = intent_name
+                        best_example = example
         
         # Map to Intent enum
         if best_intent:
@@ -141,7 +180,7 @@ class SemanticClassifier(BaseClassifier):
         
         return IntentResult(
             intent=intent,
-            confidence=best_confidence,
+            confidence=float(best_confidence),
             metadata={
                 "classifier": "semantic",
                 "best_example": best_example,
