@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from app.agent import NL2SQLAgent, ChatHistoryManager
+from app.ai import NL2SQLAgent, ChatHistoryManager
 from app.core.logging_config import get_logger
 from app.core.config import settings
 
