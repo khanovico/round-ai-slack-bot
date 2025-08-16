@@ -6,8 +6,10 @@ import logging
 
 # from app.api.dummies import router as dummy_router
 from app.api.agent import router as agent_router
+from app.api.cache import router as cache_router
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger
+from app.cache import close_cache, check_cache_health
 
 # Setup logging
 setup_logging()
@@ -20,8 +22,22 @@ async def lifespan(app: FastAPI):
     logger.info(f"""
 --------------------------------------------------------------
 🚀 {settings.PROJECT_NAME} v{settings.VERSION} starting up...""")
+    
+    # Check cache health before starting
+    logger.info("🔍 Checking cache health...")
+    cache_health = await check_cache_health()
+    
+    if cache_health["status"] == "healthy":
+        logger.info(f"✅ Cache ({cache_health['backend']}) is healthy - Response time: {cache_health.get('response_time_ms', 0)}ms")
+    else:
+        logger.warning(f"⚠️ Cache ({cache_health['backend']}) is unhealthy: {cache_health.get('error', 'Unknown error')}")
+        logger.warning("🚀 Starting anyway - cache operations may fail")
+    
     yield
+    
     # Shutdown
+    logger.info("🛑 Shutting down cache connections...")
+    await close_cache()
     logger.info(f"🛑 {settings.PROJECT_NAME} shutting down...")
 
 
@@ -59,6 +75,7 @@ async def log_requests(request: Request, call_next):
 # Include routers
 # app.include_router(dummy_router, prefix="/dummy", tags=["dummies"])
 app.include_router(agent_router)
+app.include_router(cache_router)
 
 @app.get("/")
 async def root():
