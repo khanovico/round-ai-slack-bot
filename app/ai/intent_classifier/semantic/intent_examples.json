@@ -1,0 +1,14 @@
+{
+    "greeting": [
+        "Hello!",
+        "Hey there!"
+    ],
+    "show_sql": [
+        "Give me the sql query",
+        "The sql query u used?"
+    ],
+    "export_csv": [
+        "Give me csv file!",
+        "export it!"
+    ]
+}

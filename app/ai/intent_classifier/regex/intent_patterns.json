@@ -1,0 +1,5 @@
+{
+    "greeting": "^\\s*(hi|hello|hey|thanks|thank you|thx|👋|good (morning|afternoon|evening))\\s*[.!]*\\s*$",
+    "show_sql": "\\b(show|display|reveal)\\b.*\\b(sql|query)\\b|\\bwhat (sql|query)\\b",
+    "export_csv": "\\b(export|download|csv|save as csv)\\b"
+}
