@@ -4,15 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 import time
 
 # from app.api.dummies import router as dummy_router
-from app.api.agent import router as agent_router
 from app.api.cache import router as cache_router
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger
 from app.cache import close_cache, check_cache_health
 
-# Setup logging
+# Setup logging FIRST
 setup_logging()
 logger = get_logger("app.main")
+
+# Import agent router AFTER logging is set up
+from app.api.agent import router as agent_router
 
 
 @asynccontextmanager

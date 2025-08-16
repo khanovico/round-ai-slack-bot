@@ -14,7 +14,7 @@ class RegexClassifier(BaseClassifier):
     
     def __init__(self, confidence_threshold: float = 0.8, patterns_file: str = None):
         super().__init__(confidence_threshold)
-        self.logger = get_logger("app.ai.intent_classifier.regex")
+        self.logger = get_logger("app.ai.regex_classifier")
         
         # Load patterns from file
         if patterns_file is None:

@@ -66,7 +66,7 @@ LOGGING_CONFIG: Dict[str, Any] = {
             "handlers": ["console", "file", "error_file"],
             "propagate": False,
         },
-        "app.agent": {
+        "app.ai": {
             "level": "DEBUG",
             "handlers": ["console", "agent_file"],
             "propagate": False,

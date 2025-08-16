@@ -12,7 +12,7 @@ class BaseAgent(ABC):
     """Abstract base class for all agents"""
     
     def __init__(self, history_manager: Optional[ChatHistoryManager] = None):
-        self.logger = get_logger(f"app.agent.{self.__class__.__name__.lower()}")
+        self.logger = get_logger(f"app.ai.{self.__class__.__name__.lower()}")
         self.history_manager = history_manager
         self.logger.info(f"Initializing {self.__class__.__name__}...")
         

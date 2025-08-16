@@ -13,7 +13,7 @@ class ChatHistoryManager:
     """Manages chat history for agent sessions using Redis cache"""
     
     def __init__(self, max_cnt: int = 5):
-        self.logger = get_logger("app.agent.chat_history")
+        self.logger = get_logger("app.ai.chat_history")
         self.cache = None
         self.max_cnt = max_cnt * 2
     
