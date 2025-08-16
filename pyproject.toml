@@ -59,6 +59,9 @@ Issues = "https://github.com/yourusername/fastapi-project/issues"
 [tool.hatch.version]
 path = "app/__init__.py"
 
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
 [tool.black]
 line-length = 88
 target-version = ['py311']
@@ -112,7 +115,7 @@ exclude_lines = [
     "raise AssertionError",
     "raise NotImplementedError",
     "if 0:",
-    "if __name__ == .__main__.:",
-    "class .*\bProtocol\):",
-    "@(abc\.)?abstractmethod",
+    "if __name__ == ['\"]__main__['\"]:",
+    'class .*\bProtocol\):',
+    '@(abc\.)?abstractmethod',
 ]
