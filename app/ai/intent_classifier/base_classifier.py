@@ -44,7 +44,7 @@ class BaseClassifier(ABC):
         if result.confidence < self.confidence_threshold:
             return IntentResult(
                 intent=self.fallback_intent,
-                confidence=1.0,  # Fallback is always confident
+                confidence=0.1,
                 metadata={
                     "original_intent": result.intent.value,
                     "original_confidence": result.confidence,

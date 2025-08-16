@@ -1,5 +1,5 @@
 {
-    "greeting": "^\\s*(hi|hello|hey|thanks|thank you|thx|👋|good (morning|afternoon|evening))\\s*[.!]*\\s*$",
-    "show_sql": "\\b(show|display|reveal)\\b.*\\b(sql|query)\\b|\\bwhat (sql|query)\\b",
-    "export_csv": "\\b(export|download|csv|save as csv)\\b"
+    "greeting": "^(?:\\s*(?:[👋🤝🙏✋🖐️🤚]+\\s*)?)(?:(?:(?:hi|hello|hey|hiya|howdy|yo|greetings)\\b(?:\\s*,?\\s*(?:there|team|everyone|everybody|all|folks))?)|(good\\s+(?:morning|afternoon|evening|night|day)\\b)|(gm|gn|ga)\\b|(hola|bonjour|ciao|hallo|salut|namaste|salaam|shalom)\\b)(?:\\s*[.!?…]*)(?:\\s*[👋🤝🙏✋🖐️🤚]*)\\s*$",
+    "show_sql": "^(?:\\s*(?:(?:please|can\\s+you|could\\s+you|would\\s+you|will\\s+you)\\s+)?)?(?:show|see|give|print|return|display)\\s+(?:me\\s+)?(?:the\\s+)?(?:sql|query|sql\\s+query)(?:\\s*(?:code|statement|script)?)?\\s*[.!?]*\\s*$",
+    "export_csv": "^(?:\\s*(?:(?:please|can\\s+you|could\\s+you|would\\s+you|will\\s+you)\\s+)?)?(?:export|download|save|get|give|output|return)\\s+(?:me\\s+)?(?:the\\s+)?(?:data|results?|table|output)?\\s*(?:as|to|in)?\\s*csv\\b\\s*[.!?]*\\s*$"
 }
