@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     
     # OpenAI
     OPENAI_API_KEY: str = ""
+
+    # Chat config
+    MAX_CHAT_HISTORY_CNT: int = 5
     
     # Redis
     REDIS_HOST: str = "localhost"

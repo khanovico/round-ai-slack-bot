@@ -6,15 +6,19 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from app.core.config import settings
 from app.agent.tools import SQLExecutorTool
 from app.core.logging_config import get_logger
+from app.agent.chat_history import ChatHistoryManager
+import time
 
 
 class NL2SQLAgent:
     """Natural Language to SQL Agent using OpenAI and LangChain"""
     
-    def __init__(self):
+    def __init__(self, history_manager: ChatHistoryManager = None):
         self.logger = get_logger("app.agent")
         
         self.logger.info("Initializing NL2SQL Agent...")
+
+        self.history_manager = history_manager
         
         self.llm = ChatOpenAI(
             model="gpt-4",
@@ -80,30 +84,85 @@ class NL2SQLAgent:
         
         return create_openai_tools_agent(self.llm, self.tools, prompt)
     
-    async def ask(self, question: str) -> Dict[str, Any]:
+    async def ask(self, question: str, session_id: str = None) -> Dict[str, Any]:
         """
         Process a natural language question and return SQL results with explanation
         """
-        self.logger.info(f"Processing question: {question}")
+        if session_id is None:
+            error_msg = "session_id is required"
+            self.logger.error(error_msg)
+            return {
+                "question": question,
+                "answer": error_msg,
+                "session_id": None,
+                "success": False
+            }
+            
+        self.logger.info(f"Processing question: {question} for session: {session_id}")
         
         try:
+            # Build context with chat history if available
+            conversation_input = question
+            if self.history_manager and session_id:
+                # Get conversation context
+                context = await self.history_manager.get_conversation_context(session_id, limit=settings.MAX_CHAT_HISTORY_CNT)
+                if context:
+                    conversation_input = f"Previous conversation:\n{context}\n\nCurrent question: {question}"
+                
+                # Add user message to history
+                await self.history_manager.add_message(
+                    session_id, 
+                    "user", 
+                    question,
+                    metadata={"timestamp": time.time()}
+                )
+            
+            # Process with the agent
             result = await self.agent_executor.ainvoke({
-                "input": question
+                "input": conversation_input
             })
+            
+            answer = result.get("output", "No response generated")
+            
+            # Add assistant response to history
+            if self.history_manager and session_id:
+                await self.history_manager.add_message(
+                    session_id,
+                    "assistant", 
+                    answer,
+                    metadata={
+                        "timestamp": time.time(),
+                        "model": "gpt-4",
+                        "tools_used": ["sql_executor"] if "sql_executor" in str(result) else []
+                    }
+                )
             
             self.logger.info(f"Successfully processed question: {question}")
             
             return {
                 "question": question,
-                "answer": result.get("output", "No response generated"),
+                "answer": answer,
+                "session_id": session_id,
                 "success": True
             }
             
         except Exception as e:
+            error_msg = f"Error processing question: {str(e)}"
+            
+            # Add error to history
+            if self.history_manager and session_id:
+                await self.history_manager.add_message(
+                    session_id,
+                    "system",
+                    error_msg,
+                    metadata={"timestamp": time.time(), "error": True}
+                )
+            
             self.logger.error(f"Error processing question '{question}': {str(e)}", exc_info=True)
             return {
                 "question": question,
-                "answer": f"Error processing question: {str(e)}",
+                "answer": error_msg,
+                "session_id": session_id,
                 "success": False
             }
     
