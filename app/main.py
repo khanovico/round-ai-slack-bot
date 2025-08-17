@@ -5,6 +5,7 @@ import time
 
 # from app.api.dummies import router as dummy_router
 from app.api.cache import router as cache_router
+from app.api.slack import router as slack_router
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger
 from app.cache import close_cache, check_cache_health
@@ -81,6 +82,7 @@ async def log_requests(request: Request, call_next):
 # app.include_router(dummy_router, prefix="/dummy", tags=["dummies"])
 app.include_router(agent_router)
 app.include_router(cache_router)
+app.include_router(slack_router)
 
 @app.get("/")
 async def root():

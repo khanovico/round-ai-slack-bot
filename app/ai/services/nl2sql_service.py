@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union, Literal
 from app.ai import NL2SQLAgent, ChatHistoryManager
 from app.ai.intent_classifier import IntentClassifierFactory, Intent
 from app.core.logging_config import get_logger
@@ -13,6 +13,8 @@ class NL2SQServiceResponse(BaseModel):
     answer: str
     session_id: Optional[str] = None
     success: bool
+    data: Union[str, List[Dict]]
+    type: Literal["text", "table", "sql", "download"]
 
 class NL2SQLService:
     def __init__(self):
@@ -58,7 +60,9 @@ class NL2SQLService:
             question=question,
             session_id=session_id,
             answer="",
-            success=False
+            success=False,
+            data="",
+            type="text"
         )        
 
         # Intent classification with tracing
@@ -100,6 +104,8 @@ class NL2SQLService:
                                        agent_res["metadata"]["exec_result"])
                 self.logger.info(f"Successfully processed question: {question}")
                 res.success = True
+                res.data=agent_res["structured_response"]["exec_result"]
+                res.type="table"
             else:
                 self.logger.warning(f"Failed to process question: {question} - {agent_res['answer']}")
             
@@ -108,8 +114,10 @@ class NL2SQLService:
         elif intent == Intent.SHOW_SQL:
             sql = await self.get_last_sql(session_id)
             if sql:
-                res.answer = sql
                 res.success = True
+                res.data=sql
+                res.type="sql"
+                res.answer="Here is the SQL Query I used to get the data:\n"
             else:
                 res.answer = "No SQL query was excuted for your previous request."
         
@@ -117,9 +125,11 @@ class NL2SQLService:
             exec_res = await self.get_last_exec_res(session_id)
             if exec_res:
                 ( _, download_url) = create_and_upload_csv(exec_res)
-                res.answer = download_url
+                res.data = download_url
                 res.success = True
-            
+                res.type="download"
+                res.answer="Here is the download link of csv file showing the result:\n"
+
             else:
                 res.answer = "No SQL query was excuted for your previous request."
         

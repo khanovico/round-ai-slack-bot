@@ -5,8 +5,20 @@ pydantic-settings>=2.1.0
 langsmith>=0.1.0
 langchain-core>=0.2.0
 
+# Database
+sqlalchemy>=2.0.0
+alembic>=1.12.0
+
 # Google Drive API
 google-api-python-client>=2.0.0
 google-auth>=2.0.0
 google-auth-oauthlib>=1.0.0
 google-auth-httplib2>=0.1.0
+
+redis
+langchain
+langchain_openai
+asyncpg
+numpy
+sentence_transformers
+slack_sdk
