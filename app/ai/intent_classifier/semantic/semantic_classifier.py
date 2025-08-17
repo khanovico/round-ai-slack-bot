@@ -13,8 +13,9 @@ from app.core.logging_config import get_logger
 class SemanticClassifier(BaseClassifier):
     """Semantic intent classifier using sentence similarity"""
     
-    def __init__(self, confidence_threshold: float = 0.6, examples_file: str = None):
-        super().__init__(confidence_threshold)
+    def __init__(self, confidence_threshold: float = 0.6, fallback_intent: Intent = Intent.UNKNOWN, 
+                 examples_file: str = None):
+        super().__init__(confidence_threshold, fallback_intent)
         self.logger = get_logger("app.ai.semantic_classifier")
         
         # Load examples from file

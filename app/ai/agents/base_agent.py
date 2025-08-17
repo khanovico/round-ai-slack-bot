@@ -93,6 +93,7 @@ class BaseAgent(ABC):
                 "answer": answer,
                 "session_id": session_id,
                 "success": True,
+                "metadata": result.get("metadata", {}),
                 **{k: v for k, v in result.items() if k not in ["answer", "metadata"]}
             }
             

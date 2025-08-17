@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from app.ai import NL2SQLAgent, ChatHistoryManager
-from app.ai.intent_classifier import RegexClassifier, SemanticClassifier, IntentResult
+from app.ai.intent_classifier import RegexClassifier, SemanticClassifier
+from app.ai.services.nl2sql_service import NL2SQLService, NL2SQServiceResponse
 from app.core.logging_config import get_logger
 from app.core.config import settings
 
@@ -10,12 +10,7 @@ router = APIRouter(prefix="/agent", tags=["agent"])
 logger = get_logger("app.agent.api")
 
 # Initialize chat history manager
-chat_history_manager = ChatHistoryManager(max_cnt=settings.MAX_CHAT_HISTORY_CNT)
-
-# Initialize the agent
-logger.info("Initializing NL2SQL Agent...")
-nl2sql_agent = NL2SQLAgent(chat_history_manager)
-logger.info("NL2SQL Agent initialized successfully")
+nl2sql_service = NL2SQLService()
 
 # Initialize intent classifiers
 regex_classifier = RegexClassifier(confidence_threshold=0.8)
@@ -53,7 +48,7 @@ class IntentResponse(BaseModel):
     metadata: dict
 
 
-@router.post("/ask", response_model=QuestionResponse)
+@router.post("/ask", response_model=NL2SQServiceResponse)
 async def ask_question(request: QuestionRequest):
     """
     Ask a natural language question about app metrics.
@@ -71,93 +66,13 @@ async def ask_question(request: QuestionRequest):
     
     try:
         # Create session if not provided
-        session_id = request.session_id
-        if not session_id:
-            session_id = await chat_history_manager.create_session()
-            logger.info(f"Created new session: {session_id}")
-        
-        result = await nl2sql_agent.ask(request.question, session_id)
-        
-        if result["success"]:
-            logger.info(f"Successfully processed question: {request.question}")
-        else:
-            logger.warning(f"Failed to process question: {request.question} - {result['answer']}")
+        result = await nl2sql_service.run(request.question, request.session_id)
             
-        return QuestionResponse(**result)
+        return result
         
     except Exception as e:
         logger.error(f"Error processing question '{request.question}': {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/session", response_model=SessionResponse)
-async def create_session():
-    """Create a new chat session"""
-    try:
-        session_id = await chat_history_manager.create_session()
-        logger.info(f"Created new session: {session_id}")
-        return SessionResponse(
-            session_id=session_id,
-            message="Session created successfully"
-        )
-    except Exception as e:
-        logger.error(f"Error creating session: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/session/{session_id}/history")
-async def get_session_history(session_id: str, limit: int = 20):
-    """Get chat history for a session"""
-    try:
-        history = await chat_history_manager.get_history(session_id, limit=limit)
-        return {
-            "session_id": session_id,
-            "history": history,
-            "count": len(history)
-        }
-    except Exception as e:
-        logger.error(f"Error getting session history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/session/{session_id}/stats")
-async def get_session_stats(session_id: str):
-    """Get session statistics"""
-    try:
-        stats = await chat_history_manager.get_session_stats(session_id)
-        return stats
-    except Exception as e:
-        logger.error(f"Error getting session stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/session/{session_id}")
-async def clear_session(session_id: str):
-    """Clear chat history for a session"""
-    try:
-        success = await chat_history_manager.clear_history(session_id)
-        if success:
-            return {"message": f"Session {session_id} cleared successfully"}
-        else:
-            raise HTTPException(status_code=404, detail="Session not found")
-    except Exception as e:
-        logger.error(f"Error clearing session: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/sessions")
-async def list_active_sessions(limit: int = 50):
-    """List active session IDs"""
-    try:
-        sessions = await chat_history_manager.list_active_sessions(limit=limit)
-        return {
-            "sessions": sessions,
-            "count": len(sessions)
-        }
-    except Exception as e:
-        logger.error(f"Error listing sessions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/check-intent", response_model=IntentResponse)
 async def check_intent(request: IntentRequest):
