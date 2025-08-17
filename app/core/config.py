@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: str = ""
 
+    # LangSmith for observability
+    LANGCHAIN_TRACING_V2: bool = False
+    LANGCHAIN_API_KEY: str = ""
+    LANGCHAIN_PROJECT: str = "app-analytics-agent"
+    LANGCHAIN_ENDPOINT: str = "https://api.smith.langchain.com"
+
     # Chat config
     MAX_CHAT_HISTORY_CNT: int = 5
     

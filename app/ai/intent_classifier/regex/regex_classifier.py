@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Dict
 from app.ai.intent_classifier.base_classifier import BaseClassifier, Intent, IntentResult
 from app.core.logging_config import get_logger
+from app.observability import trace_classification
 
 
 class RegexClassifier(BaseClassifier):
@@ -46,6 +47,7 @@ class RegexClassifier(BaseClassifier):
                 self.logger.error(f"Invalid regex pattern for intent '{intent_name}': {e}")
         return compiled
     
+    @trace_classification("regex")
     def _classify_internal(self, text: str) -> IntentResult:
         """Classify intent using regex patterns"""
         text = text.strip().lower()

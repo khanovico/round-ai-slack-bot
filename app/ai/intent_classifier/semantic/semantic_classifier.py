@@ -8,6 +8,7 @@ from typing import List, Dict
 from sentence_transformers import SentenceTransformer
 from app.ai.intent_classifier.base_classifier import BaseClassifier, Intent, IntentResult
 from app.core.logging_config import get_logger
+from app.observability import trace_classification
 
 
 class SemanticClassifier(BaseClassifier):
@@ -103,6 +104,7 @@ class SemanticClassifier(BaseClassifier):
         # Fallback to simple similarity
         return [self._simple_similarity(text, example) for example in examples]
     
+    @trace_classification("semantic")
     def _classify_internal(self, text: str) -> IntentResult:
         """Classify intent using semantic similarity"""
         text = text.strip()

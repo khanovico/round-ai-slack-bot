@@ -5,6 +5,7 @@ from app.ai.intent_classifier import IntentClassifierFactory, Intent
 from app.core.logging_config import get_logger
 from app.core.config import settings
 from app.cache import get_cache
+from app.observability import trace_async_method, trace_agent_call
 
 class NL2SQServiceResponse(BaseModel):
     question: str
@@ -45,6 +46,7 @@ class NL2SQLService:
         await cache.set(self.get_sql_key(session_id), sql)
         await cache.set(self.get_exec_res_key(session_id), res)
 
+    @trace_async_method("nl2sql_service_run", capture_args=True, capture_result=True)
     async def run(self, question: str, session_id: str) -> NL2SQServiceResponse:
         # Create session_id if session is not existing
         if not session_id:
@@ -58,16 +60,31 @@ class NL2SQLService:
             success=False
         )        
 
-        # Intent classification
-        regex_result = self.regex_classifier.classify(question)
-        if self.regex_classifier.is_confident(regex_result):
-            intent = regex_result.intent
-            self.logger.info(f"Classified intent by Regex: {intent} with score {regex_result.confidence}")
-        else:
-            # Fallback to semantic
-            intent = self.semantic_classifier.classify(question)
-            self.logger.info(f"Classified intent by semantic: {intent.intent} with score {intent.confidence}")
-            intent = intent.intent
+        # Intent classification with tracing
+        with trace_agent_call("intent_classification", {"question": question, "session_id": session_id}) as trace_outputs:
+            regex_result = self.regex_classifier.classify(question)
+            if self.regex_classifier.is_confident(regex_result):
+                intent = regex_result.intent
+                trace_outputs.update({
+                    "method": "regex",
+                    "intent": intent.value,
+                    "confidence": regex_result.confidence,
+                    "metadata": regex_result.metadata
+                })
+                self.logger.info(f"Classified intent by Regex: {intent} with score {regex_result.confidence}")
+            else:
+                # Fallback to semantic
+                semantic_result = self.semantic_classifier.classify(question)
+                intent = semantic_result.intent
+                trace_outputs.update({
+                    "method": "semantic_fallback",
+                    "intent": intent.value,
+                    "confidence": semantic_result.confidence,
+                    "metadata": semantic_result.metadata,
+                    "regex_confidence": regex_result.confidence
+                })
+                self.logger.info(f"Classified intent by semantic: {intent} with score {semantic_result.confidence}")
+        
         self.logger.info(f"Classified intent: {intent}")
 
         # Trigger logics according to intent

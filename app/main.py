@@ -8,10 +8,14 @@ from app.api.cache import router as cache_router
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger
 from app.cache import close_cache, check_cache_health
+from app.observability import setup_langsmith
 
 # Setup logging FIRST
 setup_logging()
 logger = get_logger("app.main")
+
+# Setup LangSmith observability
+setup_langsmith()
 
 # Import agent router AFTER logging is set up
 from app.api.agent import router as agent_router
