@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from app.ai.intent_classifier import RegexClassifier, SemanticClassifier
+from app.ai.intent_classifier import IntentClassifierFactory
 from app.ai.services.nl2sql_service import NL2SQLService, NL2SQServiceResponse
 from app.core.logging_config import get_logger
 from app.core.config import settings
@@ -12,9 +12,9 @@ logger = get_logger("app.agent.api")
 # Initialize chat history manager
 nl2sql_service = NL2SQLService()
 
-# Initialize intent classifiers
-regex_classifier = RegexClassifier(confidence_threshold=0.8)
-semantic_classifier = SemanticClassifier(confidence_threshold=0.6)
+# Initialize intent classifiers using factory
+regex_classifier = IntentClassifierFactory.get_regex_classifier(confidence_threshold=0.8)
+semantic_classifier = IntentClassifierFactory.get_semantic_classifier(confidence_threshold=0.6)
 logger.info("Intent classifiers initialized successfully")
 
 

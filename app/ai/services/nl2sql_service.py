@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 from app.ai import NL2SQLAgent, ChatHistoryManager
-from app.ai.intent_classifier import RegexClassifier, SemanticClassifier, Intent
+from app.ai.intent_classifier import IntentClassifierFactory, Intent
 from app.core.logging_config import get_logger
 from app.core.config import settings
 from app.cache import get_cache
@@ -22,9 +22,9 @@ class NL2SQLService:
         self.nl2sql_agent = NL2SQLAgent(self.chat_history_manager)
 
         # intent classifiers
-        self.regex_classifier = RegexClassifier(confidence_threshold=0.8)
-        self.semantic_classifier = SemanticClassifier(confidence_threshold=0.6, 
-                                                      fallback_intent = Intent.SQL_QUERY)
+        self.regex_classifier = IntentClassifierFactory.get_regex_classifier(confidence_threshold=0.8)
+        self.semantic_classifier = IntentClassifierFactory.get_semantic_classifier(confidence_threshold=0.6, 
+                                                                                  fallback_intent=Intent.SQL_QUERY)
         
     def get_sql_key(self, session_id: str) -> str:
         return f"res:{session_id}:sql"
