@@ -6,6 +6,7 @@ from app.core.logging_config import get_logger
 from app.core.config import settings
 from app.cache import get_cache
 from app.observability import trace_async_method, trace_agent_call
+from app.utils import create_and_upload_csv
 
 class NL2SQServiceResponse(BaseModel):
     question: str
@@ -115,7 +116,8 @@ class NL2SQLService:
         elif intent == Intent.EXPORT_CSV:
             exec_res = await self.get_last_exec_res(session_id)
             if exec_res:
-                res.answer = exec_res
+                ( _, download_url) = create_and_upload_csv(exec_res)
+                res.answer = download_url
                 res.success = True
             
             else:

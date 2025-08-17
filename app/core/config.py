@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     LANGCHAIN_PROJECT: str = "app-analytics-agent"
     LANGCHAIN_ENDPOINT: str = "https://api.smith.langchain.com"
 
+    # Google Drive API
+    GOOGLE_DRIVE_CREDENTIALS_FILE: str = ""
+    GOOGLE_DRIVE_FOLDER_ID: str = ""  # Optional: specific folder to upload to
+
     # Chat config
     MAX_CHAT_HISTORY_CNT: int = 5
     
