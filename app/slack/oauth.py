@@ -34,7 +34,14 @@ class SlackOAuthHandler:
         self.authorize_url_generator = AuthorizeUrlGenerator(
             client_id=self.client_id,
             redirect_uri=self.redirect_uri,
-            scopes=["chat:write", "app_mentions:read", "channels:history", "channels:read", "groups:read"],
+            scopes=[
+                "chat:write",
+                "channels:read", 
+                "channels:join",
+                "channels:manage",
+                "groups:read",
+                "channels:history"
+            ],
         )
         
         # Simple state store (in production, use Redis or database)
@@ -146,19 +153,8 @@ class SlackOAuthHandler:
                                 logger.warning(f"Could not send welcome message to channel #{channel_name}: {welcome_error}")
                                 # Continue without welcome message - not critical
                         except SlackApiError as create_error:
-                            if create_error.response['error'] in SLACK_CHANNEL_CREATE_ERRORS:
-                                logger.warning(f"Channel '{settings.DEFAULT_SLACK_CHANNEL}' already exists but couldn't find it")
-                                # Try to find it again after creation attempt
-                                channels_response = bot_client.conversations_list(types="public_channel")
-                                for channel in channels_response.get('channels', []):
-                                    if channel['name'] == settings.DEFAULT_SLACK_CHANNEL:
-                                        channel_id = channel['id']
-                                        channel_name = channel['name']
-                                        logger.info(f"Found channel after creation attempt: '{channel_name}' with ID: {channel_id}")
-                                        break
-                            else:
-                                logger.warning(f"Could not create default channel '{settings.DEFAULT_SLACK_CHANNEL}': {create_error}")
-                                # Continue without default channel
+                            logger.warning(f"Could not create default channel '{settings.DEFAULT_SLACK_CHANNEL}': {create_error}")
+                            # Continue without default channel
                     
                     installer_user_id = installer.get("id")
                     if installer_user_id:
@@ -197,14 +193,13 @@ class SlackOAuthHandler:
                         
                         workspace_data = {
                             'team_id': installation.team_id,
+                            'channel_id': channel_id,  # Add the channel_id
                             'team_name': installation.team_name,
                             'bot_user_id': installation.bot_user_id,
                             'bot_token': installation.bot_token,
                             'is_active': True
                         }
 
-                        print("==============================", workspace_data['team_name'])
-                        
                         if existing_workspace:
                             # Update existing workspace
                             for key, value in workspace_data.items():

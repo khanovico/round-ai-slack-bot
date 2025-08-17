@@ -8,7 +8,7 @@ from app.cache import get_cache
 from app.observability import trace_async_method, trace_agent_call
 from app.utils import create_and_upload_csv
 
-class NL2SQServiceResponse(BaseModel):
+class NL2SQLServiceResponse(BaseModel):
     question: str
     answer: str
     session_id: Optional[str] = None
@@ -50,13 +50,13 @@ class NL2SQLService:
         await cache.set(self.get_exec_res_key(session_id), res)
 
     @trace_async_method("nl2sql_service_run", capture_args=True, capture_result=True)
-    async def run(self, question: str, session_id: str) -> NL2SQServiceResponse:
+    async def run(self, question: str, session_id: str) -> NL2SQLServiceResponse:
         # Create session_id if session is not existing
         if not session_id:
             session_id = await self.chat_history_manager.create_session()
             self.logger.info(f"Created new session: {session_id}")
 
-        res = NL2SQServiceResponse(
+        res = NL2SQLServiceResponse(
             question=question,
             session_id=session_id,
             answer="",
@@ -103,9 +103,12 @@ class NL2SQLService:
                 await self.store_exec_result(session_id, agent_res["metadata"]["sql_query"], 
                                        agent_res["metadata"]["exec_result"])
                 self.logger.info(f"Successfully processed question: {question}")
-                res.success = True
                 res.data=agent_res["structured_response"]["exec_result"]
-                res.type="table"
+                res.success = True
+                if len(res.data) > 1:
+                    res.type="table"
+                else:
+                    res.type="text"
             else:
                 self.logger.warning(f"Failed to process question: {question} - {agent_res['answer']}")
             

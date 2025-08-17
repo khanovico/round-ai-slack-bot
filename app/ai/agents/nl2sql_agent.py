@@ -120,7 +120,7 @@ class NL2SQLAgent(BaseAgent):
                 "answer": structured_response.interpreted_answer,
                 "structured_response": structured_response.model_dump(),
                 "metadata": {
-                    "model": "gpt-4", 
+                    "model": "gpt-4o", 
                     "sql_query": structured_response.sql_query,
                     "result_count": len(structured_response.exec_result),
                     "exec_result": structured_response.exec_result,
@@ -140,7 +140,7 @@ class NL2SQLAgent(BaseAgent):
                 "answer": error_response.interpreted_answer,
                 "structured_response": error_response.model_dump(),
                 "metadata": {
-                    "model": "gpt-4",
+                    "model": "gpt-4o",
                     "error": str(e)
                 }
             }

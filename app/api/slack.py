@@ -9,7 +9,7 @@ from app.slack.oauth import oauth_handler
 from app.slack.bot import bot_manager
 from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse
 from app.core.logging_config import get_logger
-from app.ai.services.nl2sql_service import NL2SQLService, NL2SQServiceResponse
+from app.ai.services.nl2sql_service import NL2SQLService, NL2SQLServiceResponse
 
 # Initialize chat history manager
 nl2sql_service = NL2SQLService()
@@ -60,13 +60,17 @@ async def slack_oauth_callback(code: str, state: str = None):
         logger.error(f"OAuth callback error: {e}")
         raise HTTPException(status_code=500, detail="OAuth callback failed")
 
+# Global set to track processed events (in production, use Redis or database)
+processed_events = set()
+
 @router.post("/events")
 async def slack_events(request: Request):
     """Handle Slack events - routes to the bot instance"""
     try:
         # Get the request body
         body = await request.body()
-        event_data = json.loads(body)  
+        event_data = json.loads(body)
+        
         event_type = event_data.get("type")
         
         if event_type == "url_verification":
@@ -104,27 +108,49 @@ async def slack_events(request: Request):
                 )
 
             logger.info(f"Processing {event_type_inner} event")
-            
             # Handle app_mention events using bot manager
-            if event.get("type") == "message" and not event_subtype and text != "":
+            if event.get("type") == "message" and not event_subtype:
+                # Check if we've already processed this event
+                event_id = event.get("event_ts")  # Use timestamp as unique identifier
+                if event_id in processed_events:
+                    logger.info(f"Event {event_id} already processed, skipping")
+                    return JSONResponse(
+                        content={"message": "Event already processed", "status": "duplicate"},
+                        status_code=200
+                    )
+                
+                # Mark this event as processed
+                processed_events.add(event_id)
+                
+                # Limit the size of processed events set to prevent memory issues
+                if len(processed_events) > 1000:
+                    # Remove oldest events (keep last 1000)
+                    processed_events.clear()
+                
                 result = await nl2sql_service.run(text, channel)
 
-                if result.get("success"):
-                    if result.get("type") == 'text':
+                if result.success:
+                    if result.type == 'text':
                         await bot_manager.handle_message(result)
-                    if result.get("type") == 'table':
+                    elif result.type == 'table':
                         await bot_manager.handle_table(result)
-                    if result.get("type") == 'download':
+                    elif result.type == 'download':
                         await bot_manager.handle_download(result)
+                    elif result.type == 'sql':
+                        await bot_manager.handle_sql(result)
+                    
                     return JSONResponse(
                         content={"message": "App mention handled successfully", "status": "ok"},
                         status_code=200
                     )
                 else:
-                    logger.error(f"Failed to handle app mention: {result.get('error')}")
+                    logger.error(f"Failed to handle app mention: {result.answer}")
+                    # Send error message to Slack using the error handler
+                    await bot_manager.handle_error(result)
+                    # Return 200 to prevent Slack from retrying the event
                     return JSONResponse(
-                        content={"error": result.get("error")},
-                        status_code=500
+                        content={"message": "Error handled", "status": "error_handled"},
+                        status_code=200
                     )
             
             logger.info(f"Event type {event_type_inner} processed")

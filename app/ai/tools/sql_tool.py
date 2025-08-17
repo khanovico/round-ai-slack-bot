@@ -50,8 +50,6 @@ class SQLExecutorTool(BaseTool):
         try:
             # Basic security check - only allow SELECT statements
             query_lower = query.lower().strip()
-            if not query_lower.startswith('select'):
-                return "Error: Only SELECT queries are allowed for security reasons."
             
             # Check for dangerous keywords
             dangerous_keywords = ['drop', 'delete', 'insert', 'update', 'alter', 'create', 'truncate']

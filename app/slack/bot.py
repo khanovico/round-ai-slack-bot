@@ -22,29 +22,29 @@ class SlackBotManager:
         """Set the OAuth handler"""
         self.oauth_handler = oauth_handler
     
-    async def get_bot(self) -> Optional[Dict[str, Any]]:
+    async def get_bot(self, channel_id: str) -> Optional[Dict[str, Any]]:
         """Get bot instance for the installed workspace"""
         if self.bot:
-            return self.bot
+            if(self.bot['channel_id'] == channel_id):
+                return self.bot
         
         # Create new bot instance
-        bot = await self._create_bot()
+        bot = await self._create_bot(channel_id)
         if bot:
             self.bot = bot
             return bot
         
         return None
     
-    async def _create_bot(self) -> Optional[Dict[str, Any]]:
+    async def _create_bot(self, channel_id: str) -> Optional[Dict[str, Any]]:
         """Create bot instance for the installed workspace"""
         try:
             # Get the first active workspace from database
             async with AsyncSessionLocal() as db:
                 result = await db.execute(
-                    select(SlackWorkspace).where(SlackWorkspace.is_active == True)
+                    select(SlackWorkspace).where(SlackWorkspace.channel_id == channel_id)
                 )
                 workspace = result.scalar_one_or_none()
-                
                 if not workspace:
                     logger.warning("No active workspace found in database")
                     return None
@@ -60,7 +60,8 @@ class SlackBotManager:
                     'token': bot_token,
                     'team_name': workspace.team_name,
                     'team_id': workspace.team_id,
-                    'bot_user_id': workspace.bot_user_id
+                    'bot_user_id': workspace.bot_user_id,
+                    'channel_id': workspace.channel_id
                 }
                 
                 logger.info(f"Created bot instance for workspace: {workspace.team_name}")
@@ -101,17 +102,17 @@ class SlackBotManager:
         # Assemble the full table
         return "\n".join([divider, header_row, divider] + rows + [divider])
 
-    async def handle_message(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_message(self, result) -> Dict[str, Any]:
         """Handle all app mention events using the intelligent agent runtime"""
         try:
             # Get bot info
-            bot_info = await self.get_bot()
+            bot_info = await self.get_bot(result.session_id)
             if not bot_info:
                 logger.error("No bot available to handle app mention")
                 return {"success": False, "error": "Bot not available"}
 
-            channel = result.get("session_id")
-            text = result.get("answer")
+            channel = result.session_id
+            text = result.answer
             client = WebClient(token=bot_info['token'])
             slack_response = client.chat_postMessage(
                 channel=channel,
@@ -130,22 +131,22 @@ class SlackBotManager:
             logger.error(f"Error handling message: {e}")
             return {"success": False, "error": str(e)}
 
-    async def handle_table(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_table(self, result) -> Dict[str, Any]:
         """Handle all app mention events using the intelligent agent runtime"""
         try:
             # Get bot info
-            bot_info = await self.get_bot()
+            bot_info = await self.get_bot(result.session_id)
             if not bot_info:
                 logger.error("No bot available to handle app mention")
                 return {"success": False, "error": "Bot not available"}
 
-            channel = result.get("session_id")
-            text = result.get("answer")
-            data = result.get('data')
+            channel = result.session_id
+            text = result.answer
+            data = result.data
             client = WebClient(token=bot_info['token'])
             
             # Create ASCII table
-            table_string = self.create_ascii_table(result.get("data"))
+            table_string = self.create_ascii_table(result.data)
             code_block = f"```\n{table_string}\n```"
             
             # Send message using WebClient
@@ -173,22 +174,6 @@ class SlackBotManager:
                     }
                 ]
             )
-            # slack_response = client.chat_postMessage(
-            #     channel=channel,
-            #     blocks=[
-            #         {"type": "section","text":{"type":"mrkdwn","text":"*Weekly Sales*"}},
-            #         {
-            #         "type": "section",
-            #         "text": {"type": "mrkdwn","text":"```Name      | Q1 | Q2\nAlice     |100 |150\nBob       |200 |180```"},
-            #         "accessory": {
-            #             "type": "button",
-            #             "text": {"type":"plain_text","text":"Download CSV"},
-            #             "url": "https://your-domain.com/reports/sales.csv"
-            #         }
-            #         }
-            #     ],
-            #     text="Weekly Sales with download link"
-            # )
 
             if slack_response.get("ok"):
                 logger.info(f"Successfully sent response to channel {channel}")
@@ -201,18 +186,18 @@ class SlackBotManager:
             logger.error(f"Error handling message: {e}")
             return {"success": False, "error": str(e)}
 
-    async def handle_download(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_download(self, result) -> Dict[str, Any]:
         """Handle all app mention events using the intelligent agent runtime"""
         try:
             # Get bot info
-            bot_info = await self.get_bot()
+            bot_info = await self.get_bot(result.session_id)
             if not bot_info:
                 logger.error("No bot available to handle app mention")
                 return {"success": False, "error": "Bot not available"}
 
-            channel = result.get("session_id")
-            text = result.get("answer")
-            data = result.get('data')
+            channel = result.session_id
+            text = result.answer
+            data = result.data
             client = WebClient(token=bot_info['token'])
             
             slack_response = client.chat_postMessage(
@@ -240,6 +225,78 @@ class SlackBotManager:
 
         except Exception as e:
             logger.error(f"Error handling message: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def handle_sql(self, result) -> Dict[str, Any]:
+        """Handle all app mention events using the intelligent agent runtime"""
+        try:
+            # Get bot info
+            bot_info = await self.get_bot(result.session_id)
+            if not bot_info:
+                logger.error("No bot available to handle app mention")
+                return {"success": False, "error": "Bot not available"}
+
+            channel = result.session_id
+            text = result.answer
+            data = result.data
+            client = WebClient(token=bot_info['token'])
+            
+            # Format the text with proper styling using Slack blocks
+            slack_response = client.chat_postMessage(
+                channel=channel,
+                blocks=[
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f'`{data}`'
+                        }
+                    }
+                ],
+                text=text  # Fallback text for notifications
+            )
+
+            if slack_response.get("ok"):
+                logger.info(f"Successfully sent response to channel {channel}")
+                return {"success": True, "message": "Response sent successfully"}
+            else:
+                logger.error(f"Failed to send message: {slack_response.get('error')}")
+                return {"success": False, "error": f"Slack API error: {slack_response.get('error')}"}
+
+        except Exception as e:
+            logger.error(f"Error handling message: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def handle_error(self, result) -> Dict[str, Any]:
+        """Handle error messages with proper formatting"""
+        try:
+            # Get bot info
+
+            bot_info = await self.get_bot(result.session_id)
+
+            if not bot_info:
+                logger.error("No bot available to handle error message")
+                return {"success": False, "error": "Bot not available"}
+
+            channel = result.session_id
+            error_text = result.answer
+            client = WebClient(token=bot_info['token'])
+            
+            # Format error message with warning styling
+            slack_response = client.chat_postMessage(
+                channel=channel,
+                text=f"Error: {error_text}"  # Fallback text for notifications
+            )
+
+            if slack_response.get("ok"):
+                logger.info(f"Successfully sent error message to channel {channel}")
+                return {"success": True, "message": "Error message sent successfully"}
+            else:
+                logger.error(f"Failed to send error message: {slack_response.get('error')}")
+                return {"success": False, "error": f"Slack API error: {slack_response.get('error')}"}
+
+        except Exception as e:
+            logger.error(f"Error handling error message: {e}")
             return {"success": False, "error": str(e)}
 
 

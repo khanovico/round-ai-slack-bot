@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from app.ai.intent_classifier import IntentClassifierFactory
-from app.ai.services.nl2sql_service import NL2SQLService, NL2SQServiceResponse
+from app.ai.services.nl2sql_service import NL2SQLService, NL2SQLServiceResponse
 from app.core.logging_config import get_logger
 from app.core.config import settings
 
@@ -48,7 +48,7 @@ class IntentResponse(BaseModel):
     metadata: dict
 
 
-@router.post("/ask", response_model=NL2SQServiceResponse)
+@router.post("/ask", response_model=NL2SQLServiceResponse)
 async def ask_question(request: QuestionRequest):
     """
     Ask a natural language question about app metrics.

@@ -22,6 +22,7 @@ def upgrade() -> None:
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('team_id', sa.String(length=50), nullable=False),
         sa.Column('team_name', sa.String(length=255), nullable=False),
+        sa.Column('channel_id', sa.String(length=50), nullable=False),
         sa.Column('bot_user_id', sa.String(length=50), nullable=False),
         sa.Column('bot_token', sa.Text(), nullable=False),
         sa.Column('installed_at', sa.DateTime(), nullable=True),
